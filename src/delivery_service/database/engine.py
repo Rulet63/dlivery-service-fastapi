@@ -1,12 +1,22 @@
-# заглушка
-from __future__ import annotations
-
 from collections.abc import Generator
-from typing import Any
 
-engine: Any = None
-SessionLocal: Any = None
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from ..config import settings
+
+engine = create_engine(
+    settings.DATABASE_URL,
+    echo=settings.SQLALCHEMY_ECHO,
+    pool_pre_ping=True,
+)
+
+SessionLocal = sessionmaker(bind=engine, class_=Session, autocommit=False, autoflush=False)
 
 
-def get_db() -> Generator[Any, None, None]:
-    yield None
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

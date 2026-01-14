@@ -12,10 +12,12 @@ repos:
     rev: v1.14.0
     hooks:
       - id: mypy
-        args: [--strict, --ignore-missing-imports]
+        pass_filenames: false
+        args: ["--config-file=mypy.ini", "src"]
         additional_dependencies:
           - pydantic
           - pydantic-settings
+          - sqlalchemy[mypy]
 
   # Базовые проверки файлов
   - repo: https://github.com/pre-commit/pre-commit-hooks
