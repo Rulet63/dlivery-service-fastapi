@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_ECHO: bool = True
 
     # REDIS
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str
     CURRENCY_CACHE_TTL: int = 3600
 
     # APP

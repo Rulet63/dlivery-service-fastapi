@@ -1,24 +1,24 @@
 """Database layer with models and connections."""
 
+from __future__ import annotations
+
 from .engine import SessionLocal, engine, get_db
-from .models import Base, Package, PackageType, User
+from .models import Base, Package, PackageType
 
 __all__ = [
     "Base",
     "Package",
     "PackageType",
-    "SessionLocal",
-    "User",
     "engine",
+    "SessionLocal",
     "get_db",
-    "init_db",
 ]
 
 
 def init_db() -> None:
-    """Инициализировать базу данных.
+    """Инициализация БД.
 
-    Создаёт все таблицы, если их нет.
-    Вызывается один раз при запуске приложения.
+    В этом проекте схемой управляет Alembic миграциями,
+    поэтому create_all на старте не используется.
     """
-    Base.metadata.create_all(bind=engine)
+    return None
