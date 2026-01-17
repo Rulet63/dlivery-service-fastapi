@@ -33,6 +33,9 @@ async def process_unpriced_packages() -> int:
         result = await session.execute(select(Package).where(Package.delivery_cost_rub.is_(None)))
         packages = list(result.scalars().all())
 
+        if not packages:
+            return 0
+
         for p in packages:
             p.delivery_cost_rub = calculate_delivery_cost_rub(p.weight, p.content_value_usd, usd_rub)
 
@@ -49,6 +52,11 @@ async def job_wrapper() -> None:
 
 
 async def main() -> None:
+    # Run once mode (debug)
+    if settings.SCHEDULER_RUN_ONCE:
+        await job_wrapper()
+        return
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         job_wrapper,

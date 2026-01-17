@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from functools import lru_cache
 
@@ -20,7 +22,7 @@ class Settings(BaseSettings):
 
     # DATABASE
     DATABASE_URL: str
-    SQLALCHEMY_ECHO: bool = True
+    SQLALCHEMY_ECHO: bool = False
 
     # REDIS
     REDIS_URL: str
@@ -33,7 +35,10 @@ class Settings(BaseSettings):
 
     # EXTERNAL APIs
     CURRENCY_API_URL: str = "https://www.cbr-xml-daily.ru/daily_json.js"
+
+    # SCHEDULER
     SCHEDULER_INTERVAL_MINUTES: int = 5
+    SCHEDULER_RUN_ONCE: bool = False
 
 
 @lru_cache(maxsize=1)
@@ -42,4 +47,4 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-logger.info(f"✓ Settings loaded: ENV={settings.ENVIRONMENT}")
+logger.info("✓ Settings loaded: ENV=%s", settings.ENVIRONMENT)

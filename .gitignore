@@ -1,51 +1,29 @@
-cat > .gitignore << EOF
+# env files
+.env
+.env.*
+
+# python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Poetry
-poetry.lock
+# venv
+.venv/
+venv/
+env/
+
+# pytest/coverage
+.pytest_cache/
+.coverage
+htmlcov/
 
 # IDE
-.vscode/
 .idea/
-*.swp
-*.swo
-
-# Environment
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Database
-*.db
-*.sqlite3
-
-# Logs
-*.log
+.vscode/
 
 # OS
 .DS_Store
-Thumbs.db
-EOF
+
+# local docker volumes (если вдруг появятся в проекте)
+mysql_data/
+redis_data/

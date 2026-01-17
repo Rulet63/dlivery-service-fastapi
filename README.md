@@ -1,81 +1,88 @@
-# Delivery Service API
+# Delivery Service (FastAPI)
 
-Микросервис для расчета стоимости международной доставки посылок.
+Микросервис для регистрации посылок и расчёта стоимости доставки.
 
-## 🏗️ Архитектура
+## Запуск (Docker)
+1) Создай файл `.env` на основе `.env.example`.
+2) Запусти сервис и зависимости:
+```bash
+docker compose up -d --build
+```
 
-- **FastAPI 0.115.0+** - веб-фреймворк
-- **SQLAlchemy 2.0** - ORM для MySQL
-- **Redis 5.2.0** - кеширование (единый пакет, sync + async)
-- **APScheduler 3.11** - периодические задачи
-- **Docker Compose** - контейнеризация
+Сервис будет доступен:
+- API: http://127.0.0.1:8000
+- Swagger UI: http://127.0.0.1:8000/docs
 
-## 🚀 Быстрый старт
+## Миграции
+Миграции накатываются вручную (если нужно):
+```bash
+docker exec -it delivery-web poetry run alembic upgrade head
+```
 
-### Локально
+Проверить текущую ревизию:
+```bash
+docker exec -it delivery-web poetry run alembic current
+```
 
-\`\`\`bash
-# 1. Установка зависимостей
-poetry install
+## API (пример работы с cookie-сессией)
+Важно: сервис идентифицирует пользователя по cookie `session_id`.
+Чтобы сохранять одну и ту же сессию между запросами, используйте cookie-jar.
 
-# 2. Создать .env файл
-cp .env .env.local
-# Отредактировать .env.local если нужно
+### Получить типы посылок
+```bash
+curl -4 -s http://127.0.0.1:8000/api/package-types
+```
 
-# 3. Запустить MySQL и Redis (локально или в Docker)
-docker-compose up -d mysql redis
+### Зарегистрировать посылку (создаст cookies.txt)
+```bash
+curl -4 -c cookies.txt -H "Content-Type: application/json" \
+  -d '{"name":"T-shirt","weight":1.2,"package_type_id":1,"content_value_usd":30}' \
+  http://127.0.0.1:8000/api/packages
+```
 
-# 4. Запустить приложение
-poetry run uvicorn src.delivery_service.main:app --reload
+### Получить список своих посылок
+```bash
+curl -4 -b cookies.txt "http://127.0.0.1:8000/api/packages?limit=20&offset=0"
+```
 
-# 5. Открыть Swagger
-# http://localhost:8000/api/docs
-\`\`\`
+Фильтры:
+- `package_type_id` — фильтр по типу
+- `priced=true|false` — только рассчитанные/не рассчитанные
 
-### Docker Compose
+Пример:
+```bash
+curl -4 -b cookies.txt "http://127.0.0.1:8000/api/packages?priced=false"
+```
 
-\`\`\`bash
-docker-compose up -d
-docker-compose logs -f app
-\`\`\`
+### Получить посылку по id (только в рамках своей сессии)
+```bash
+curl -4 -b cookies.txt http://127.0.0.1:8000/api/packages/<PACKAGE_ID>
+```
 
-## 📚 API Эндпоинты
+## Расчёт стоимости доставки
+Стоимость доставки вычисляется по формуле:
+`(weight_kg * 0.5 + content_value_usd * 0.01) * usd_rub_rate`
 
-### Посылки
-- \`POST /api/packages\` - Зарегистрировать посылку
-- \`GET /api/packages\` - Получить мои посылки
-- \`GET /api/packages/{id}\` - Информация о посылке
+Курс USD/RUB берётся с https://www.cbr-xml-daily.ru/daily_json.js и кешируется в Redis.
 
-### Типы
-- \`GET /api/package-types\` - Все доступные типы
+### Ручной запуск расчёта (для отладки)
+Через API:
+```bash
+curl -4 -X POST http://127.0.0.1:8000/api/debug/recalculate-delivery
+```
 
-### Задачи (отладка)
-- \`POST /api/tasks/calculate-rates\` - Рассчитать стоимость доставки
-- \`GET /api/tasks/scheduled\` - Список запланированных задач
+Или разовым запуском scheduler-контейнера:
+```bash
+docker compose run --rm -e SCHEDULER_RUN_ONCE=1 scheduler
+```
 
-## 🧪 Тестирование
+## Логи
+Посмотреть логи web:
+```bash
+docker logs -f delivery-web
+```
 
-\`\`\`bash
-# Все тесты
-poetry run pytest
-
-# С покрытием
-poetry run pytest --cov=src/delivery_service tests/
-
-# Конкретный тест
-poetry run pytest tests/test_packages.py::test_create_package -v
-\`\`\`
-
-## 📋 Версии зависимостей (2026)
-
-| Пакет | Версия | Примечание |
-|-------|--------|-----------|
-| Python | 3.11+ | Поддерживается |
-| FastAPI | 0.115.0+ | Последняя стабильная |
-| SQLAlchemy | 2.0.37+ | ORM v2 синтаксис |
-| redis | 5.2.0+ | ✅ Единый пакет (sync + async) |
-| Pydantic | 2.8.0+ | V2 с лучшей производительностью |
-
-## 📝 Лицензия
-
-MIT
+Посмотреть логи scheduler:
+```bash
+docker logs -f delivery-scheduler
+```
