@@ -28,6 +28,16 @@ services:
       timeout: 5s
       retries: 10
 
+  migrate:
+    build: .
+    container_name: delivery-migrate
+    env_file: [.env]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: ["poetry","run","alembic","upgrade","head"]
+    restart: "no"
+
   web:
     build: .
     container_name: delivery-web
@@ -37,11 +47,20 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
-    command: ["poetry","run","uvicorn","delivery_service.main:app","--host","0.0.0.0","--port","8000","--workers","1","--log-level","debug"]
-
-
+    volumes:
+      - ./log_config.json:/app/log_config.json:ro
+    command:
+      [
+        "poetry","run","uvicorn","delivery_service.main:app",
+        "--host","0.0.0.0","--port","8000",
+        "--workers","1",
+        "--log-level","debug",
+        "--log-config","/app/log_config.json"
+      ]
 
   scheduler:
     build: .
@@ -52,6 +71,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: ["poetry","run","python","-m","delivery_service.tasks.scheduler"]
     restart: unless-stopped
 

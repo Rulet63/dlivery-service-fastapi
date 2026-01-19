@@ -35,3 +35,7 @@ class PackageListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class RecalculateDeliveryResponse(BaseModel):
+    updated: int

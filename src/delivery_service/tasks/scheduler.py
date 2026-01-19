@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
@@ -21,9 +21,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def calculate_delivery_cost_rub(weight_kg: float, content_value_usd: float, usd_rub: Decimal) -> float:
+def calculate_delivery_cost_rub(weight_kg: float, content_value_usd: float, usd_rub: Decimal) -> Decimal:
     cost = (Decimal(str(weight_kg)) * Decimal("0.5") + Decimal(str(content_value_usd)) * Decimal("0.01")) * usd_rub
-    return float(cost)
+    # Фиксируем до копеек
+    return cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def process_unpriced_packages() -> int:
@@ -52,7 +53,6 @@ async def job_wrapper() -> None:
 
 
 async def main() -> None:
-    # Run once mode (debug)
     if settings.SCHEDULER_RUN_ONCE:
         await job_wrapper()
         return

@@ -86,3 +86,20 @@ docker logs -f delivery-web
 ```bash
 docker logs -f delivery-scheduler
 ```
+
+# 1) Очистить Redis DB0 (удаляет все ключи текущей базы) [web:109]
+docker compose exec redis redis-cli -n 0 FLUSHDB
+
+# 2) Создать посылку и сохранить cookie сессии [web:105]
+curl -c cookies.txt -H "Content-Type: application/json" \
+  -d '{"name":"Phone","weight":0.4,"package_type_id":2,"content_value_usd":600}' \
+  http://127.0.0.1:8000/api/packages | jq
+
+# 3) Запустить пересчёт (debug)
+curl -X POST http://127.0.0.1:8000/api/debug/recalculate-delivery | jq
+
+# 4) Убедиться, что стоимость рассчиталась (в рамках той же сессии) [web:105]
+curl -b cookies.txt "http://127.0.0.1:8000/api/packages?limit=10&offset=0" | jq
+
+# 5) Посмотреть, что в Redis появился курс
+docker compose exec redis redis-cli -n 0 GET currency:usd_rub

@@ -29,7 +29,6 @@ async def create_package(
             },
         )
 
-    # ВАЖНО: не используем Package(**kwargs), иначе mypy ругается call-arg. [web:988]
     package = Package()
     package.session_id = session_id
     package.package_type_id = payload.package_type_id
@@ -67,7 +66,12 @@ async def get_packages(
             Package.delivery_cost_rub.is_not(None) if priced else Package.delivery_cost_rub.is_(None)
         )
 
-    count_query = select(func.count()).select_from(Package).where(Package.session_id == session_id)
+    count_query = (
+        select(func.count())
+        .select_from(Package)
+        .join(PackageType, Package.package_type_id == PackageType.id)
+        .where(Package.session_id == session_id)
+    )
 
     if package_type_id is not None:
         count_query = count_query.where(Package.package_type_id == package_type_id)
