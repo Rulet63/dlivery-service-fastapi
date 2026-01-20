@@ -3,103 +3,131 @@
 Микросервис для регистрации посылок и расчёта стоимости доставки.
 
 ## Запуск (Docker)
-1) Создай файл `.env` на основе `.env.example`.
+
+1) Создай `.env` на основе `.env.example`.
 2) Запусти сервис и зависимости:
-```bash
-docker compose up -d --build
-```
+   ```bash
+   docker compose up -d --build
+   ```
 
 Сервис будет доступен:
 - API: http://127.0.0.1:8000
 - Swagger UI: http://127.0.0.1:8000/docs
 
 ## Миграции
-Миграции накатываются вручную (если нужно):
+
+Миграции накатываются автоматически через сервис `migrate` при `docker compose up`.
+
+Проверить статус:
 ```bash
-docker exec -it delivery-web poetry run alembic upgrade head
+docker logs delivery-migrate
+docker compose exec web poetry run alembic current
 ```
 
-Проверить текущую ревизию:
-```bash
-docker exec -it delivery-web poetry run alembic current
-```
+## API (пример с cookie-сессией)
 
-## API (пример работы с cookie-сессией)
-Важно: сервис идентифицирует пользователя по cookie `session_id`.
-Чтобы сохранять одну и ту же сессию между запросами, используйте cookie-jar.
+Пользователь определяется по cookie `session_id`. Используй cookie-jar для сохранения сессии.
 
 ### Получить типы посылок
 ```bash
-curl -4 -s http://127.0.0.1:8000/api/package-types
+curl -s http://127.0.0.1:8000/api/package-types | jq
 ```
 
 ### Зарегистрировать посылку (создаст cookies.txt)
 ```bash
-curl -4 -c cookies.txt -H "Content-Type: application/json" \
+curl -c cookies.txt -H "Content-Type: application/json" \
   -d '{"name":"T-shirt","weight":1.2,"package_type_id":1,"content_value_usd":30}' \
-  http://127.0.0.1:8000/api/packages
+  http://127.0.0.1:8000/api/packages | jq
 ```
 
 ### Получить список своих посылок
 ```bash
-curl -4 -b cookies.txt "http://127.0.0.1:8000/api/packages?limit=20&offset=0"
+curl -b cookies.txt "http://127.0.0.1:8000/api/packages?limit=20&offset=0" | jq
 ```
 
-Фильтры:
-- `package_type_id` — фильтр по типу
-- `priced=true|false` — только рассчитанные/не рассчитанные
+**Фильтры:**
+- `package_type_id` — по типу посылки
+- `priced=true|false` — рассчитанные/не рассчитанные
 
-Пример:
 ```bash
-curl -4 -b cookies.txt "http://127.0.0.1:8000/api/packages?priced=false"
+curl -b cookies.txt "http://127.0.0.1:8000/api/packages?priced=false" | jq
 ```
 
-### Получить посылку по id (только в рамках своей сессии)
+### Получить посылку по id (только свою)
 ```bash
-curl -4 -b cookies.txt http://127.0.0.1:8000/api/packages/<PACKAGE_ID>
+curl -b cookies.txt http://127.0.0.1:8000/api/packages/<PACKAGE_ID> | jq
 ```
 
 ## Расчёт стоимости доставки
-Стоимость доставки вычисляется по формуле:
-`(weight_kg * 0.5 + content_value_usd * 0.01) * usd_rub_rate`
 
-Курс USD/RUB берётся с https://www.cbr-xml-daily.ru/daily_json.js и кешируется в Redis.
+Формула: `(weight_kg * 0.5 + content_value_usd * 0.01) * usd_rub_rate`
 
-### Ручной запуск расчёта (для отладки)
-Через API:
+Курс USD/RUB из https://www.cbr-xml-daily.ru/daily_json.js → Redis (TTL).
+
+### Ручной запуск (отладка)
 ```bash
-curl -4 -X POST http://127.0.0.1:8000/api/debug/recalculate-delivery
+curl -X POST http://127.0.0.1:8000/api/debug/recalculate-delivery | jq
 ```
 
-Или разовым запуском scheduler-контейнера:
+### Разовый запуск scheduler
 ```bash
 docker compose run --rm -e SCHEDULER_RUN_ONCE=1 scheduler
 ```
 
-## Логи
-Посмотреть логи web:
-```bash
-docker logs -f delivery-web
-```
+## Тестирование кэша (Redis → CBR fallback)
 
-Посмотреть логи scheduler:
 ```bash
-docker logs -f delivery-scheduler
-```
-
-# 1) Очистить Redis DB0 (удаляет все ключи текущей базы) [web:109]
+# 1) Очистить Redis
 docker compose exec redis redis-cli -n 0 FLUSHDB
 
-# 2) Создать посылку и сохранить cookie сессии [web:105]
+# 2) Создать посылку
 curl -c cookies.txt -H "Content-Type: application/json" \
   -d '{"name":"Phone","weight":0.4,"package_type_id":2,"content_value_usd":600}' \
   http://127.0.0.1:8000/api/packages | jq
 
-# 3) Запустить пересчёт (debug)
+# 3) Пересчёт (должен пойти в CBR)
 curl -X POST http://127.0.0.1:8000/api/debug/recalculate-delivery | jq
 
-# 4) Убедиться, что стоимость рассчиталась (в рамках той же сессии) [web:105]
+# 4) Посылка рассчитана
 curl -b cookies.txt "http://127.0.0.1:8000/api/packages?limit=10&offset=0" | jq
 
-# 5) Посмотреть, что в Redis появился курс
+# 5) Курс в Redis
 docker compose exec redis redis-cli -n 0 GET currency:usd_rub
+```
+
+## Логи
+
+```bash
+docker logs -f delivery-web
+docker logs -f delivery-scheduler
+docker logs delivery-migrate
+```
+
+## Тесты
+
+```bash
+docker compose up -d --build
+pytest -q
+```
+
+Покрытие: сессии, валидация, ошибки, фильтры, “Не рассчитано” → рассчитано.
+
+## Архитектура
+
+```
+docker compose up
+├── mysql (healthy) + volume mysql_data
+├── redis (healthy) + volume redis_data
+├── migrate → alembic upgrade head (завершается)
+├── web (depends_on migrate+mysql+redis) → uvicorn 5 workers
+└── scheduler (depends_on migrate+mysql+redis) → APScheduler cron */5
+```
+
+## Локальная разработка
+
+```bash
+poetry install
+poetry run pre-commit install
+pre-commit run --all-files
+pytest -q
+```

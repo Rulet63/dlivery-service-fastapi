@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]  # добавить dev
   pull_request:
     branches: [main]
 
@@ -11,28 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
+    - uses: snok/install-poetry@v1
       with:
         virtualenvs-create: false
-
     - name: Install dependencies
       run: poetry install --no-root
-
     - name: Lint with Ruff
       run: poetry run ruff check . --fix
-
     - name: Format with Ruff
       run: poetry run ruff format .
-
     - name: Run tests
       run: |
         docker compose up -d --build
-        sleep 10  # wait for migrate/healthchecks
+        sleep 15  # wait migrate/healthchecks
         poetry run pytest -q --cov --cov-report=term-missing
+        docker compose down
