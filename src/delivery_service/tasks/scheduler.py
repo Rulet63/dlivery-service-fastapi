@@ -6,6 +6,7 @@ import signal
 from decimal import ROUND_HALF_UP, Decimal
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 
 from ..config import settings
@@ -60,8 +61,7 @@ async def main() -> None:
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         job_wrapper,
-        trigger="interval",
-        minutes=settings.SCHEDULER_INTERVAL_MINUTES,
+        trigger=CronTrigger(minute="*/5"),  # 0,5,10,... каждую 5-ю минуту часа
         max_instances=1,
         coalesce=True,
     )

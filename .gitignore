@@ -27,3 +27,7 @@ htmlcov/
 # local docker volumes (если вдруг появятся в проекте)
 mysql_data/
 redis_data/
+
+cookies*.txt
+jar*.txt
+headers*.txt

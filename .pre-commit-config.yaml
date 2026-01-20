@@ -1,10 +1,9 @@
 repos:
-  # Ruff для линтинга и форматирования
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.0
+    rev: v0.5.6  # последняя версия на момент написания
     hooks:
-      - id: ruff-check
-        args: [--fix]
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
   # mypy для проверки типов
