@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
-from delivery_service.config import settings
-from delivery_service.database.models import Base
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
+from delivery_service.config import settings
+from delivery_service.database.models import Base
 
 config = context.config
 

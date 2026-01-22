@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from delivery_service.tasks import scheduler
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from delivery_service.tasks import scheduler
 
 
 @pytest.mark.anyio

@@ -3,9 +3,10 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from delivery_service.database.models import Package
 from delivery_service.services import recalculate
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.anyio

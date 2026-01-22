@@ -34,12 +34,14 @@ aiosqlite = "^0.22.1"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-select = ["E", "F", "I", "UP", "B", "Q"]
-ignore = ["E501"]
+src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
-ignore = ["E501"]  # Длинные строки обработает black
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["delivery_service"]
 
 [tool.black]
 line-length = 120

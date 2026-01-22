@@ -43,8 +43,9 @@ async def test_03_package_flow_pricing_and_session_isolation(app_client: httpx.A
     assert p["delivery_cost"] != "Не рассчитано"
     assert p["delivery_cost_rub"] is not None
 
-    from delivery_service.main import app
     from httpx import ASGITransport, AsyncClient
+
+    from delivery_service.main import app
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as other:
@@ -103,8 +104,9 @@ async def test_07_session_isolation_get_by_id(app_client: httpx.AsyncClient) -> 
     r = await app_client.post("/api/packages", json=payload)
     package_id = r.json()["id"]
 
-    from delivery_service.main import app
     from httpx import ASGITransport, AsyncClient
+
+    from delivery_service.main import app
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as other:

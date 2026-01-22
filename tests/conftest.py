@@ -3,12 +3,13 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 import pytest
-from delivery_service.database import get_db
-from delivery_service.database.models import Base, Package, PackageType
-from delivery_service.main import app
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from delivery_service.database import get_db
+from delivery_service.database.models import Base, Package, PackageType
+from delivery_service.main import app
 
 
 @pytest.fixture(scope="session")
