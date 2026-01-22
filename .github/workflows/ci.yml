@@ -32,7 +32,6 @@ jobs:
       - name: Run unit/fast tests (no docker)
         run: |
           cp .env.example .env
-          # для unit тестов docker не нужен, но переменные могут требоваться при импорте settings
           echo "DB_PASSWORD=password" >> .env
           echo "DB_NAME=delivery_db" >> .env
           echo "REDIS_URL=redis://localhost:6379/0" >> .env
@@ -69,7 +68,7 @@ jobs:
 
           docker compose up -d --build
 
-          # лучше дождаться healthcheck’ов, чем sleep фиксированное время
+          # ждём mysql/redis
           for i in {1..30}; do
             MYSQL_STATUS=$(docker inspect -f '{{.State.Health.Status}}' delivery-mysql 2>/dev/null || true)
             REDIS_STATUS=$(docker inspect -f '{{.State.Health.Status}}' delivery-redis 2>/dev/null || true)
@@ -78,6 +77,17 @@ jobs:
             fi
             sleep 2
           done
+
+          # ждём, что web реально начал отвечать по HTTP
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/api/package-types >/dev/null; then
+              echo "web is ready"
+              break
+            fi
+            sleep 2
+          done
+
+          docker compose ps
 
           poetry run pytest -m integration -q
 
