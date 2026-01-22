@@ -3,16 +3,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
-from decimal import ROUND_HALF_UP, Decimal
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database.engine import SessionLocal
-from ..database.models import Package
-from ..services.currency import get_usd_rub_rate
+from ..services.recalculate import recalculate_unpriced_packages
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,37 +20,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def calculate_delivery_cost_rub(
-    weight_kg: float, content_value_usd: float, usd_rub: Decimal
-) -> Decimal:
-    cost = (
-        Decimal(str(weight_kg)) * Decimal("0.5") + Decimal(str(content_value_usd)) * Decimal("0.01")
-    ) * usd_rub
-    return cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-
-async def process_unpriced_packages() -> int:
-    usd_rub = await get_usd_rub_rate()
-
-    async with SessionLocal() as session:
-        result = await session.execute(select(Package).where(Package.delivery_cost_rub.is_(None)))
-        packages = list(result.scalars().all())
-
-        if not packages:
-            return 0
-
-        for p in packages:
-            p.delivery_cost_rub = calculate_delivery_cost_rub(
-                p.weight, p.content_value_usd, usd_rub
-            )
-
-        await session.commit()
-        return len(packages)
+async def process_unpriced_packages(db: AsyncSession) -> int:
+    return await recalculate_unpriced_packages(db)
 
 
 async def job_wrapper() -> None:
     try:
-        updated = await process_unpriced_packages()
+        async with SessionLocal() as session:
+            updated = await process_unpriced_packages(session)
         logger.info("Delivery cost job done. Updated=%s", updated)
     except Exception:
         logger.exception("Delivery cost job failed")

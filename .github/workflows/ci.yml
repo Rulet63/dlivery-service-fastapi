@@ -2,38 +2,85 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]  # добавить dev
+    branches: [main, dev]
   pull_request:
     branches: [main]
 
 jobs:
-  test:
+  fast-tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: false
-    - name: Install dependencies
-      run: poetry install --no-root
-    - name: Lint with Ruff
-      run: poetry run ruff check . --fix
-    - name: Format with Ruff
-      run: poetry run ruff format .
-    - name: Run tests
-      run: |
-        cp .env.example .env
-        echo "DB_PASSWORD=password" >> .env
-        echo "DB_NAME=delivery_db" >> .env
-        echo "REDIS_URL=redis://redis:6379/0" >> .env
-        echo "CURRENCY_API_URL=https://www.cbr-xml-daily.ru/daily_json.js" >> .env
-        echo "SCHEDULER_RUN_ONCE=false" >> .env
-        echo "SCHEDULER_INTERVAL_MINUTES=5" >> .env
+      - uses: actions/checkout@v4
 
-        docker compose up -d --build
-        sleep 15
-        poetry run pytest -q --cov --cov-report=term-missing
-        docker compose down
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: false
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Lint with Ruff
+        run: poetry run ruff check .
+
+      - name: Format check (Ruff)
+        run: poetry run ruff format . --check
+
+      - name: Run unit/fast tests (no docker)
+        run: |
+          cp .env.example .env
+          # для unit тестов docker не нужен, но переменные могут требоваться при импорте settings
+          echo "DB_PASSWORD=password" >> .env
+          echo "DB_NAME=delivery_db" >> .env
+          echo "REDIS_URL=redis://localhost:6379/0" >> .env
+          echo "CURRENCY_API_URL=https://www.cbr-xml-daily.ru/daily_json.js" >> .env
+
+          poetry run pytest -m "not integration" -q --cov --cov-report=term-missing
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: fast-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: false
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Run integration tests (docker compose)
+        run: |
+          cp .env.example .env
+          echo "DB_PASSWORD=password" >> .env
+          echo "DB_NAME=delivery_db" >> .env
+          echo "REDIS_URL=redis://redis:6379/0" >> .env
+          echo "CURRENCY_API_URL=https://www.cbr-xml-daily.ru/daily_json.js" >> .env
+          echo "SCHEDULER_RUN_ONCE=false" >> .env
+          echo "SCHEDULER_INTERVAL_MINUTES=5" >> .env
+
+          docker compose up -d --build
+
+          # лучше дождаться healthcheck’ов, чем sleep фиксированное время
+          for i in {1..30}; do
+            MYSQL_STATUS=$(docker inspect -f '{{.State.Health.Status}}' delivery-mysql 2>/dev/null || true)
+            REDIS_STATUS=$(docker inspect -f '{{.State.Health.Status}}' delivery-redis 2>/dev/null || true)
+            if [ "$MYSQL_STATUS" = "healthy" ] && [ "$REDIS_STATUS" = "healthy" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          poetry run pytest -m integration -q
+
+      - name: Docker compose down
+        if: always()
+        run: docker compose down -v

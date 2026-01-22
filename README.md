@@ -6,9 +6,9 @@
 
 1) Создай `.env` на основе `.env.example`.
 2) Запусти сервис и зависимости:
-   ```bash
-   docker compose up -d --build
-   ```
+```bash
+docker compose up -d --build
+```
 
 Сервис будет доступен:
 - API: http://127.0.0.1:8000
@@ -105,12 +105,49 @@ docker logs delivery-migrate
 
 ## Тесты
 
+В проекте два вида тестов: **быстрые** и **интеграционные**. Для разделения используются pytest-markers, которые удобно запускать через `-m`. [docs.pytest](https://docs.pytest.org/en/stable/how-to/mark.html)
+
+### 1) Быстрые тесты (unit/fast)
+
+- Не требуют поднятых docker-сервисов.
+- Обычно используют заглушки/monkeypatch и in-memory подходы.
+- Должны выполняться быстро и давать основной coverage.
+
+Запуск:
 ```bash
-docker compose up -d --build
+pytest -m "not integration" -q
+```
+
+С покрытием:
+```bash
+pytest -m "not integration" --cov=delivery_service --cov-report=term-missing
+```
+
+### 2) Интеграционные тесты (integration)
+
+- Требуют поднятых зависимостей (mysql/redis) и/или поднятого приложения.
+- Проверяют “сквозные” сценарии (API → БД → кэш → фоновые задачи).
+
+Запуск (после `docker compose up -d --build`):
+```bash
+pytest -m integration -q
+```
+
+Иногда полезно запускать все тесты сразу:
+```bash
 pytest -q
 ```
 
-Покрытие: сессии, валидация, ошибки, фильтры, “Не рассчитано” → рассчитано.
+### Рекомендуемая настройка markers (pytest.ini)
+
+Чтобы pytest не выдавал предупреждения о неизвестных маркерах, зарегистрируй их в `pytest.ini`. [docs.pytest](https://docs.pytest.org/en/stable/example/markers.html)
+
+Пример:
+```ini
+[pytest]
+markers =
+    integration: integration tests (require external services like mysql/redis)
+```
 
 ## Архитектура
 

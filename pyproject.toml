@@ -29,6 +29,7 @@ mypy = "^1.14.0"
 pre-commit = "^4.0.0"
 types-redis = "^4.6.0.20241004"
 httpx = "^0.28.1"
+aiosqlite = "^0.22.1"
 
 [tool.ruff]
 line-length = 100
@@ -52,3 +53,11 @@ warn_unused_ignores = true
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+markers = [
+  "integration: tests that require running service (docker, mysql, redis)",
+]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
