@@ -18,7 +18,9 @@ async def create_package(
     session_id: str = Depends(get_session_id),
     db: AsyncSession = Depends(get_db),
 ) -> PackageCreatedResponse:
-    result = await db.execute(select(PackageType.id).where(PackageType.id == payload.package_type_id))
+    result = await db.execute(
+        select(PackageType.id).where(PackageType.id == payload.package_type_id)
+    )
     if result.scalar_one_or_none() is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -63,7 +65,9 @@ async def get_packages(
 
     if priced is not None:
         base_query = base_query.where(
-            Package.delivery_cost_rub.is_not(None) if priced else Package.delivery_cost_rub.is_(None)
+            Package.delivery_cost_rub.is_not(None)
+            if priced
+            else Package.delivery_cost_rub.is_(None)
         )
 
     count_query = (
@@ -78,17 +82,25 @@ async def get_packages(
 
     if priced is not None:
         count_query = count_query.where(
-            Package.delivery_cost_rub.is_not(None) if priced else Package.delivery_cost_rub.is_(None)
+            Package.delivery_cost_rub.is_not(None)
+            if priced
+            else Package.delivery_cost_rub.is_(None)
         )
 
     total = (await db.execute(count_query)).scalar_one()
 
-    result = await db.execute(base_query.order_by(Package.created_at.desc()).limit(limit).offset(offset))
+    result = await db.execute(
+        base_query.order_by(Package.created_at.desc()).limit(limit).offset(offset)
+    )
     rows = result.all()
 
     items: list[PackageOut] = []
     for package, package_type_name in rows:
-        delivery_cost = "Не рассчитано" if package.delivery_cost_rub is None else f"{package.delivery_cost_rub:.2f}"
+        delivery_cost = (
+            "Не рассчитано"
+            if package.delivery_cost_rub is None
+            else f"{package.delivery_cost_rub:.2f}"
+        )
         items.append(
             PackageOut(
                 id=package.id,
@@ -124,7 +136,9 @@ async def get_package_by_id(
         )
 
     package, package_type_name = row
-    delivery_cost = "Не рассчитано" if package.delivery_cost_rub is None else f"{package.delivery_cost_rub:.2f}"
+    delivery_cost = (
+        "Не рассчитано" if package.delivery_cost_rub is None else f"{package.delivery_cost_rub:.2f}"
+    )
 
     return PackageOut(
         id=package.id,

@@ -28,7 +28,9 @@ logging.getLogger("delivery_service").setLevel(log_level)
 logger = logging.getLogger("delivery_service.web")
 
 
-def error_payload(*, error_code: str, message: str, details: object | None = None) -> dict[str, object]:
+def error_payload(
+    *, error_code: str, message: str, details: object | None = None
+) -> dict[str, object]:
     return {
         "error_code": error_code,
         "message": message,
@@ -60,7 +62,9 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=payload)
 
     @app.exception_handler(RequestValidationError)  # type: ignore[misc]
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         payload = error_payload(
             error_code="validation_error",
             message="Request validation failed",

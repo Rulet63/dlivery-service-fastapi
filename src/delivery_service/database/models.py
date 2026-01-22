@@ -41,7 +41,6 @@ class Package(Base):
     weight: Mapped[float] = mapped_column(Float, nullable=False)
     content_value_usd: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # Деньги: фиксируем копейки на уровне БД
     delivery_cost_rub: Mapped[Decimal | None] = mapped_column(DECIMAL(12, 2), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

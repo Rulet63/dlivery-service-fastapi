@@ -76,25 +76,22 @@ async def test_04_filters_priced_and_type(client: httpx.AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_05_validation_errors(client: httpx.AsyncClient) -> None:
-    # invalid package_type_id -> business validation error
     payload = {"name": "Phone", "weight": 0.4, "package_type_id": 999, "content_value_usd": 600}
     r = await client.post("/api/packages", json=payload)
     assert r.status_code == 422
     data = r.json()
-    assert data["error_code"] == "unknown_package_type"  # ваш бизнес-ошибка
+    assert data["error_code"] == "unknown_package_type"
     assert "Unknown package_type_id" in data["message"]
 
-    # missing required field -> Pydantic validation error
-    payload = {"name": "Phone", "package_type_id": 2}  # no weight/content_value_usd
+    payload = {"name": "Phone", "package_type_id": 2}
     r = await client.post("/api/packages", json=payload)
     assert r.status_code == 422
     data = r.json()
-    assert data["error_code"] == "validation_error"  # Pydantic
+    assert data["error_code"] == "validation_error"
 
 
 @pytest.mark.anyio
 async def test_06_package_not_found_404(client: httpx.AsyncClient) -> None:
-    # get non-existing package id
     r = await client.get("/api/packages/12345678-1234-1234-1234-123456789abc")
     assert r.status_code == 404
     data = r.json()
@@ -103,12 +100,10 @@ async def test_06_package_not_found_404(client: httpx.AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_07_session_isolation_get_by_id(client: httpx.AsyncClient) -> None:
-    # create package in session A
     payload = {"name": "Secret", "weight": 0.1, "package_type_id": 1, "content_value_usd": 10}
     r = await client.post("/api/packages", json=payload)
     package_id = r.json()["id"]
 
-    # session B should not access it
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=10.0) as other:
         r = await other.get(f"/api/packages/{package_id}")
         assert r.status_code == 404

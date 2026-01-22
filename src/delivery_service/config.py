@@ -20,23 +20,18 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # DATABASE
     DATABASE_URL: str
     SQLALCHEMY_ECHO: bool = False
 
-    # REDIS
     REDIS_URL: str
     CURRENCY_CACHE_TTL: int = 3600
 
-    # APP
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
 
-    # EXTERNAL APIs
     CURRENCY_API_URL: str = "https://www.cbr-xml-daily.ru/daily_json.js"
 
-    # SCHEDULER
     SCHEDULER_INTERVAL_MINUTES: int = 5
     SCHEDULER_RUN_ONCE: bool = False
 

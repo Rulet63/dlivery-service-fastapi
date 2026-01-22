@@ -24,7 +24,7 @@ htmlcov/
 # OS
 .DS_Store
 
-# local docker volumes (если вдруг появятся в проекте)
+# local docker volumes
 mysql_data/
 redis_data/
 

@@ -42,7 +42,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["package_type_id"], ["package_types.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_packages_package_type_id"), "packages", ["package_type_id"], unique=False)
+    op.create_index(
+        op.f("ix_packages_package_type_id"), "packages", ["package_type_id"], unique=False
+    )
     op.create_index(op.f("ix_packages_session_id"), "packages", ["session_id"], unique=False)
     # ### end Alembic commands ###
 

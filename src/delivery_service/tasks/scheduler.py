@@ -22,9 +22,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def calculate_delivery_cost_rub(weight_kg: float, content_value_usd: float, usd_rub: Decimal) -> Decimal:
-    cost = (Decimal(str(weight_kg)) * Decimal("0.5") + Decimal(str(content_value_usd)) * Decimal("0.01")) * usd_rub
-    # Фиксируем до копеек
+def calculate_delivery_cost_rub(
+    weight_kg: float, content_value_usd: float, usd_rub: Decimal
+) -> Decimal:
+    cost = (
+        Decimal(str(weight_kg)) * Decimal("0.5") + Decimal(str(content_value_usd)) * Decimal("0.01")
+    ) * usd_rub
     return cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
@@ -39,7 +42,9 @@ async def process_unpriced_packages() -> int:
             return 0
 
         for p in packages:
-            p.delivery_cost_rub = calculate_delivery_cost_rub(p.weight, p.content_value_usd, usd_rub)
+            p.delivery_cost_rub = calculate_delivery_cost_rub(
+                p.weight, p.content_value_usd, usd_rub
+            )
 
         await session.commit()
         return len(packages)
@@ -61,7 +66,7 @@ async def main() -> None:
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         job_wrapper,
-        trigger=CronTrigger(minute="*/5"),  # 0,5,10,... каждую 5-ю минуту часа
+        trigger=CronTrigger(minute="*/5"),
         max_instances=1,
         coalesce=True,
     )
