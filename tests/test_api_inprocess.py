@@ -3,8 +3,6 @@ from __future__ import annotations
 import httpx
 import pytest
 
-pytestmark = pytest.mark.integration
-
 
 @pytest.mark.anyio
 async def test_01_get_package_types(app_client: httpx.AsyncClient) -> None:
