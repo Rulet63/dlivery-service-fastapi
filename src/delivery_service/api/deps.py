@@ -4,8 +4,6 @@ from typing import cast
 
 from fastapi import HTTPException, Request, status
 
-SESSION_COOKIE_NAME = "session_id"
-
 
 def get_session_id(request: Request) -> str:
     session_id_any = getattr(request.state, "session_id", None)

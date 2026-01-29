@@ -11,5 +11,12 @@
       "formatter": "default"
     }
   },
-  "root": { "level": "DEBUG", "handlers": ["console"] }
+  "root": { "level": "INFO", "handlers": ["console"] },
+  "loggers": {
+    "delivery_service": { "level": "DEBUG", "propagate": true },
+
+    "uvicorn": { "level": "INFO", "propagate": true },
+    "uvicorn.error": { "level": "INFO", "propagate": true },
+    "uvicorn.access": { "level": "INFO", "handlers": ["console"], "propagate": false }
+  }
 }

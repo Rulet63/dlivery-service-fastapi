@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,4 +43,4 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-logger.info("✓ Settings loaded: ENV=%s", settings.ENVIRONMENT)
+logger.info("✓ Settings loaded: ENV=%s pid=%s", settings.ENVIRONMENT, os.getpid())

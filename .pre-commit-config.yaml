@@ -17,6 +17,7 @@ repos:
           - pydantic-settings
           - sqlalchemy[mypy]
           - types-redis
+          - types-PyYAML
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0

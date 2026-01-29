@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -10,21 +11,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
 from .api.routers import api_router
-from .config import settings
+from .utils.redis_client import close_redis
 
 SESSION_COOKIE_NAME = "session_id"
-
-log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
-
-logging.basicConfig(
-    level=log_level,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    force=True,
-)
-
-logging.getLogger().setLevel(log_level)
-logging.getLogger("delivery_service").setLevel(log_level)
-
 logger = logging.getLogger("delivery_service.web")
 
 
@@ -38,8 +27,14 @@ def error_payload(
     }
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    yield
+    await close_redis()
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Delivery Service", redirect_slashes=False)
+    app = FastAPI(title="Delivery Service", redirect_slashes=False, lifespan=lifespan)
 
     @app.exception_handler(HTTPException)  # type: ignore[misc]
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
@@ -87,45 +82,24 @@ def create_app() -> FastAPI:
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        session_id = request.cookies.get(SESSION_COOKIE_NAME) or str(uuid4())
+        raw_session_id = request.cookies.get(SESSION_COOKIE_NAME)
+        session_id = raw_session_id or str(uuid4())
         request.state.session_id = session_id
 
         start = time.perf_counter()
-        response: Response | None = None
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start) * 1000
 
-        try:
-            response = await call_next(request)
-        except Exception:
-            logger.exception(
-                "Unhandled exception during request processing method=%s url=%s session_id=%s",
-                request.method,
-                str(request.url),
-                session_id,
-            )
-            raise
-        finally:
-            duration_ms = (time.perf_counter() - start) * 1000
-            status_code = response.status_code if response is not None else 500
-            logger.info(
-                "request method=%s url=%s status=%s duration_ms=%.2f session_id=%s",
-                request.method,
-                str(request.url),
-                status_code,
-                duration_ms,
-                session_id,
-            )
+        logger.info(
+            "request method=%s url=%s status=%s duration_ms=%.2f session_id=%s",
+            request.method,
+            str(request.url),
+            response.status_code,
+            duration_ms,
+            session_id,
+        )
 
-        if response is None:
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=error_payload(
-                    error_code="internal_error",
-                    message="Internal server error",
-                    details={"path": request.url.path},
-                ),
-            )
-
-        if SESSION_COOKIE_NAME not in request.cookies:
+        if not raw_session_id:
             response.set_cookie(
                 key=SESSION_COOKIE_NAME,
                 value=session_id,

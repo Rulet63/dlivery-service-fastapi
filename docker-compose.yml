@@ -35,6 +35,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    volumes:
+      - .:/app
     command: ["poetry","run","alembic","upgrade","head"]
     restart: "no"
 
@@ -52,14 +54,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./log_config.json:/app/log_config.json:ro
+      - ./log_config.yaml:/app/log_config.yaml:ro
     command:
       [
         "poetry","run","uvicorn","delivery_service.main:app",
         "--host","0.0.0.0","--port","8000",
         "--workers","5",
-        "--log-level","debug",
-        "--log-config","/app/log_config.json"
+        "--log-config","/app/log_config.yaml"
       ]
 
   scheduler:
@@ -73,6 +74,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    volumes:
+      - ./log_config.yaml:/app/log_config.yaml:ro
     command: ["poetry","run","python","-m","delivery_service.tasks.scheduler"]
     restart: unless-stopped
 

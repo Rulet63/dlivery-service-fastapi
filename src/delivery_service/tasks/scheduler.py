@@ -5,19 +5,16 @@ import logging
 import signal
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database.engine import SessionLocal
+from ..logging_setup import setup_logging
 from ..services.recalculate import recalculate_unpriced_packages
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
-)
+setup_logging()
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("delivery_service.scheduler")
 
 
 async def process_unpriced_packages(db: AsyncSession) -> int:
@@ -41,10 +38,12 @@ async def main() -> None:
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         job_wrapper,
-        trigger=CronTrigger(minute="*/5"),
+        trigger="interval",
+        minutes=settings.SCHEDULER_INTERVAL_MINUTES,
         max_instances=1,
         coalesce=True,
     )
+
     scheduler.start()
 
     stop_event = asyncio.Event()

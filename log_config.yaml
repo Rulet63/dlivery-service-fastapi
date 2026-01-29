@@ -12,5 +12,25 @@ handlers:
     formatter: default
 
 root:
-  level: DEBUG
+  level: INFO
   handlers: [console]
+
+loggers:
+  delivery_service:
+    level: DEBUG
+    propagate: true
+
+  apscheduler:
+    level: WARNING
+    propagate: true
+
+  uvicorn:
+    level: INFO
+    propagate: true
+  uvicorn.error:
+    level: INFO
+    propagate: true
+  uvicorn.access:
+    level: INFO
+    handlers: [console]
+    propagate: false
