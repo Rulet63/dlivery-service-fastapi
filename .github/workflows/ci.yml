@@ -21,8 +21,10 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: false
 
-      - name: Ensure no in-project venv
-        run: rm -rf .venv
+      - name: Force Poetry to not use .venv
+        run: |
+          rm -rf .venv
+          echo "POETRY_VIRTUALENVS_IN_PROJECT=false" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: poetry install --no-root
@@ -58,8 +60,10 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: false
 
-      - name: Ensure no in-project venv
-        run: rm -rf .venv
+      - name: Force Poetry to not use .venv
+        run: |
+          rm -rf .venv
+          echo "POETRY_VIRTUALENVS_IN_PROJECT=false" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: poetry install --no-root
