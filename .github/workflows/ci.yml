@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  fast-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: false
+
+      - name: Force Poetry to not use .venv
+        run: |
+          rm -rf .venv
+          echo "POETRY_VIRTUALENVS_IN_PROJECT=false" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Lint with Ruff
+        run: poetry run ruff check .
+
+      - name: Format check (Ruff)
+        run: poetry run ruff format . --check
+
+      - name: Run unit/fast tests (no docker)
+        run: |
+          cp .env.example .env
+          echo "DB_PASSWORD=password" >> .env
+          echo "DB_NAME=delivery_db" >> .env
+          echo "REDIS_URL=redis://localhost:6379/0" >> .env
+          echo "CURRENCY_API_URL=https://www.cbr-xml-daily.ru/daily_json.js" >> .env
+
+          poetry run pytest -m "not integration" -q --cov=delivery_service --cov-report=term-missing
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: fast-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: false
+
+      - name: Force Poetry to not use .venv
+        run: |
+          rm -rf .venv
+          echo "POETRY_VIRTUALENVS_IN_PROJECT=false" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Run integration tests (docker compose)
+        run: |
+          cp .env.example .env
+          echo "DB_PASSWORD=password" >> .env
+          echo "DB_NAME=delivery_db" >> .env
+          echo "REDIS_URL=redis://redis:6379/0" >> .env
+          echo "CURRENCY_API_URL=https://www.cbr-xml-daily.ru/daily_json.js" >> .env
+          echo "SCHEDULER_RUN_ONCE=false" >> .env
+          echo "SCHEDULER_INTERVAL_MINUTES=5" >> .env
+
+          docker compose up -d --build
+
+          for i in {1..30}; do
+            MYSQL_STATUS=$(docker inspect -f '{{.State.Health.Status}}' delivery-mysql 2>/dev/null || true)
+            REDIS_STATUS=$(docker inspect -f '{{.State.Health.Status}}' delivery-redis 2>/dev/null || true)
+            if [ "$MYSQL_STATUS" = "healthy" ] && [ "$REDIS_STATUS" = "healthy" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          READY=""
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/api/package-types >/dev/null; then
+              echo "web is ready"
+              READY="1"
+              break
+            fi
+            sleep 2
+          done
+
+          if [ -z "$READY" ]; then
+            echo "web did not become ready"
+            docker compose ps
+            docker logs --tail=200 delivery-web || true
+            docker logs --tail=200 delivery-migrate || true
+            exit 1
+          fi
+
+          docker compose ps
+
+          poetry run pytest -m integration -q
+
+      - name: Docker compose down
+        if: always()
+        run: docker compose down -v

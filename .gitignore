@@ -1,0 +1,33 @@
+# env files
+.env
+.env.*
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# venv
+.venv/
+venv/
+env/
+
+# pytest/coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# local docker volumes
+mysql_data/
+redis_data/
+
+cookies*.txt
+jar*.txt
+headers*.txt
